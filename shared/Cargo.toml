@@ -1,0 +1,10 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bincode = { workspace = true }
+serde = { workspace = true }
+anyhow = { workspace = true }
+byteorder = { version = "1.5.0" }

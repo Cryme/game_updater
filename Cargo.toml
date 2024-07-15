@@ -1,0 +1,17 @@
+[workspace]
+members = [ "admin_panel", "client_lib", "game_files_preparator","server", "shared"]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1" }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0" }
+anyhow = { version = "1" }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["serde", "v4", "fast-rng"] }
+seahash = { version = "4" }
+flate2 = { version = "1.0" }
+sanitize-filename = { version = "0.5" }
+bincode = { version = "2.0.0-rc.3", features = ["serde", "alloc", "std"], default-features = false }
