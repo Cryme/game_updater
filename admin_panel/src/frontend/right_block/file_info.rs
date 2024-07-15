@@ -21,7 +21,7 @@ impl Frontend {
 
                 let mut prev = "".to_string();
 
-                let dirs = dir.split("/");
+                let dirs = dir.split('/');
 
                 for v in dirs {
                     prev += v;

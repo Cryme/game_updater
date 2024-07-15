@@ -3,13 +3,11 @@ use crate::admin_panel::packet_handler::HandleClientPacket;
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{ConnectInfo, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use axum::Error;
 use axum_extra::TypedHeader;
 use futures_util::StreamExt;
 use shared::admin_panel::{ClientPacket, ServerPacket};
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
-use tracing::log::info;
 use tracing::{debug, error};
 
 pub async fn admin_socket_handler(

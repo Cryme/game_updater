@@ -4,19 +4,21 @@ mod frontend;
 
 use crate::app::App;
 use crate::backend::Backend;
+
 use std::sync::mpsc::channel;
 use wasm_bindgen_futures::spawn_local;
+pub use eframe::{WebLogger, WebRunner, WebOptions};
 
 const WS_SERVER: &str = "ws://127.0.0.1:3000/ws";
 
 fn main() {
-    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
+    WebLogger::init(log::LevelFilter::Debug).ok();
     console_error_panic_hook::set_once();
 
-    let web_options = eframe::WebOptions::default();
+    let web_options = WebOptions::default();
 
     spawn_local(async {
-        let start_result = eframe::WebRunner::new()
+        let start_result = WebRunner::new()
             .start(
                 "the_canvas_id",
                 web_options,

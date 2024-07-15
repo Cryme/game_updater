@@ -40,7 +40,7 @@ impl Frontend {
             if ui
                 .left_menu_button(
                     "Files",
-                    if let RightBlockScreen::Files { .. } = self.right_block_screen {
+                    if matches!(self.right_block_screen, RightBlockScreen::Files { .. }) {
                         true
                     } else {
                         false

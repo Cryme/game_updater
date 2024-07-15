@@ -30,6 +30,7 @@ pub(crate) enum FileSortBy {
     ModifiedAt,
 }
 
+#[derive(Default)]
 pub(crate) struct FileInfoHolder {
     folders: Vec<FolderInfo>,
     files: Vec<FileInfo>,
@@ -37,16 +38,6 @@ pub(crate) struct FileInfoHolder {
     pub(crate) sort_dir: SortDir,
 }
 
-impl Default for FileInfoHolder {
-    fn default() -> Self {
-        Self {
-            folders: vec![],
-            files: vec![],
-            sort_by: FileSortBy::default(),
-            sort_dir: SortDir::default(),
-        }
-    }
-}
 
 impl FileInfoHolder {
     pub fn files(&self) -> Iter<FileInfo> {
