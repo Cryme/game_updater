@@ -1,7 +1,8 @@
 use crate::backend::file_info_holder::{FileInfoHolder, FileSortBy, SortDir};
 use crate::backend::FrontendEvent;
+use crate::frontend::dialog::Dialog;
 use crate::frontend::right_block::RightBlockScreen;
-use crate::frontend::ui_kit::{Draw, UiKit, DELETE_ICON};
+use crate::frontend::ui_kit::{DrawCb, UiKit, DELETE_ICON};
 use crate::frontend::Frontend;
 use bytesize::ByteSize;
 use eframe::epaint::Color32;
@@ -46,7 +47,7 @@ impl Frontend {
 
             ui.horizontal(|ui| {
                 ui.scope(|ui| {
-                    ui.set_width(150.);
+                    ui.set_width(110.);
 
                     ui.label(format!(
                         "Folders: {}",
@@ -54,12 +55,17 @@ impl Frontend {
                     ));
                 });
 
-                if ui.button("Create New").clicked() {}
+                if ui.button_s("Create Folder", 100., 1.).clicked() {
+                    self.show_dialog(Dialog::CreateFolder {
+                        dir: dir.to_string(),
+                        name: "New Folder".to_string(),
+                    })
+                }
             });
 
             ui.horizontal(|ui| {
                 ui.scope(|ui| {
-                    ui.set_width(150.);
+                    ui.set_width(110.);
 
                     ui.label(format!(
                         "Files: {}",
@@ -67,7 +73,7 @@ impl Frontend {
                     ));
                 });
 
-                if ui.button("Upload Files").clicked() {
+                if ui.button_s("Upload Files", 100., 1.).clicked() {
                     let t = self.to_backend.clone();
                     let dir = dir.to_string();
 
@@ -111,13 +117,13 @@ impl Frontend {
                             dir: dir.to_string() + "/" + &f.name,
                         }))
                     };
-                    f.draw(ui, (f1, f2));
+                    f.draw_cb(ui, (f1, f2));
 
                     ui.separator();
                 }
 
                 for f in self.backend.file_info_holder.files() {
-                    f.draw(ui, || {
+                    f.draw_cb(ui, || {
                         self.emit_event(FrontendEvent::DeleteFile {
                             dir: dir.to_string(),
                             name: f.name.clone(),
@@ -168,8 +174,8 @@ impl FileInfoHolder {
     }
 }
 
-impl<F: FnOnce()> Draw<F> for FileInfo {
-    fn draw(&self, ui: &mut Ui, callback: F) {
+impl<F: FnOnce()> DrawCb<F> for FileInfo {
+    fn draw_cb(&self, ui: &mut Ui, callback: F) {
         ui.horizontal(|ui| {
             ui.set_height(ROW_HEIGHT);
 
@@ -228,8 +234,8 @@ impl<F: FnOnce()> Draw<F> for FileInfo {
         });
     }
 }
-impl<F1: FnOnce(), F2: FnOnce()> Draw<(F1, F2)> for FolderInfo {
-    fn draw(&self, ui: &mut Ui, callback: (F1, F2)) {
+impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FolderInfo {
+    fn draw_cb(&self, ui: &mut Ui, callback: (F1, F2)) {
         ui.horizontal(|ui| {
             ui.set_height(ROW_HEIGHT);
 

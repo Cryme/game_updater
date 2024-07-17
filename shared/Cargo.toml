@@ -7,4 +7,6 @@ edition = "2021"
 bincode = { workspace = true }
 serde = { workspace = true }
 anyhow = { workspace = true }
+uuid = { workspace = true }
+strum = { version = "0.26", features = ["derive"] }
 byteorder = { version = "1.5.0" }

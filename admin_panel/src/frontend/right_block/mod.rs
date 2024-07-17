@@ -19,17 +19,21 @@ pub enum RightBlockScreen {
 }
 
 impl Frontend {
-    pub fn draw_right_block(&mut self, ui: &mut Ui) {
-        match &mut self.right_block_screen {
-            RightBlockScreen::Dashboard => {}
-            RightBlockScreen::PatchNotes => {}
-            RightBlockScreen::EditPatchNote { id } => {}
-            RightBlockScreen::Files { dir } => {
-                let s = dir.clone();
+    pub fn draw_right_block(&mut self, ui: &mut Ui, width: f32) {
+        ui.scope(|ui| {
+            ui.set_width(width);
 
-                self.draw_file_infos(ui, &s);
+            match &mut self.right_block_screen {
+                RightBlockScreen::Dashboard => {}
+                RightBlockScreen::PatchNotes => {}
+                RightBlockScreen::EditPatchNote { id } => {}
+                RightBlockScreen::Files { dir } => {
+                    let s = dir.clone();
+
+                    self.draw_file_infos(ui, &s);
+                }
+                RightBlockScreen::Logs => self.draw_logs(ui),
             }
-            RightBlockScreen::Logs => self.draw_logs(ui),
-        }
+        });
     }
 }

@@ -1,20 +1,21 @@
 use crate::backend::file_info_holder::FileInfoHolder;
-use crate::backend::log_holder::{Log, LogHolder, LogLevel};
 use crate::backend::network::Network;
+use crate::backend::notification::Notification;
 use crate::frontend::right_block::RightBlockScreen;
 use log::{log, Level};
-use shared::admin_panel::{ClientPacket, ServerPacket};
+use shared::admin_panel::{ClientPacket, Log, LogHolder, LogLevel, ServerPacket};
 use std::sync::mpsc::{channel, Receiver};
 
 pub(crate) mod events;
 pub(crate) mod file_info_holder;
-pub(crate) mod log_holder;
 pub(crate) mod network;
+pub(crate) mod notification;
 mod packet_handler;
 
 pub enum BackendCommand {
     OpenFileObserve { dir: String },
     ShowFileUploading { files: Vec<String> },
+    OpenLogs,
 }
 
 pub enum FrontendEvent {
@@ -26,6 +27,10 @@ pub enum FrontendEvent {
         dir: String,
         name: String,
     },
+    CreateFolder {
+        dir: String,
+        name: String,
+    },
     ChangeScreen(RightBlockScreen),
 }
 
@@ -33,6 +38,9 @@ pub struct Backend {
     network: Network,
     from_server: Receiver<ServerPacket>,
     from_frontend: Receiver<FrontendEvent>,
+
+    pub(crate) notifications: Vec<Notification>,
+
     pub(crate) log_holder: LogHolder,
     pub(crate) file_info_holder: FileInfoHolder,
 }
@@ -50,6 +58,7 @@ impl Backend {
             from_server: receiver,
             from_frontend: frontend_rx,
             file_info_holder: FileInfoHolder::default(),
+            notifications: vec![],
         }
     }
 
@@ -60,7 +69,7 @@ impl Backend {
     pub fn debug(&mut self, text: &str) {
         log!(Level::Debug, "{}", text);
 
-        self.log_holder.add(Log {
+        self.log_holder.add_app(Log {
             level: LogLevel::Debug,
             producer: "App".to_string(),
             log: text.to_string(),

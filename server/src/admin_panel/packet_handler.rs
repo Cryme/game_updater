@@ -1,5 +1,6 @@
-use shared::admin_panel::{ClientPacket, FileInfo, FolderInfo, ServerPacket};
-use tracing::log::info;
+use shared::admin_panel::{ClientPacket, FileInfo, FolderInfo, Log, LogLevel, ServerPacket};
+use std::time::Duration;
+use tracing::log::{debug};
 
 pub(crate) trait HandleClientPacket {
     async fn handle(self) -> Option<ServerPacket>;
@@ -30,14 +31,20 @@ impl HandleClientPacket for ClientPacket {
                     .collect(),
             }),
             ClientPacket::RemoveFile { dir, name } => {
-                println!("{dir} {name}");
+                debug!("{dir} {name}");
 
                 None
             }
-            ClientPacket::AddFile { dir, name, file } => {
-                info!(">>> Add file to dir: {dir} {name}");
+            ClientPacket::AddFile {
+                id,
+                dir,
+                name,
+                file,
+            } => {
+                debug!(">>> Add file to dir: {dir} {name}");
+                tokio::time::sleep(Duration::from_secs(4)).await;
 
-                None
+                Some(ServerPacket::FileUploaded { id })
             }
             ClientPacket::PatchNotes => {
                 todo!()
@@ -48,6 +55,17 @@ impl HandleClientPacket for ClientPacket {
             ClientPacket::AddPatchNote { data } => {
                 todo!()
             }
+            ClientPacket::CreateFolder { dir, name } => {
+                debug!(">>> Create folder {name} in dir: {dir}");
+
+                None
+            }
+            ClientPacket::Logs => Some(ServerPacket::Logs(vec![Log {
+                level: LogLevel::Info,
+                producer: "Monitor".to_string(),
+                log: "bla bla".to_string(),
+                time: chrono::Local::now().timestamp(),
+            }])),
         }
     }
 }

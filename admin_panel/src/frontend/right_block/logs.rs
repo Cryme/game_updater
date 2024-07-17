@@ -1,9 +1,9 @@
-use crate::backend::log_holder::{LogHolder, LogLevelFilter};
-use crate::frontend::ui_kit::combo_box_row;
+use crate::frontend::ui_kit::{combo_box_row, AsColor};
 use crate::frontend::Frontend;
 use eframe::epaint::text::TextWrapMode;
 use eframe::epaint::Color32;
 use egui::{RichText, ScrollArea, Ui};
+use shared::admin_panel::{LogHolder, LogLevelFilter};
 
 impl Frontend {
     pub(crate) fn draw_logs(&mut self, ui: &mut Ui) {
@@ -40,7 +40,7 @@ impl Frontend {
 
             ScrollArea::vertical().show(ui, |ui| {
                 ui.vertical(|ui| {
-                    for log in self.backend.log_holder.logs.iter().filter(|v| {
+                    for log in self.backend.log_holder.server_logs.iter().filter(|v| {
                         let a = self.backend.log_holder.producer_filter == LogHolder::ALL
                             || self.backend.log_holder.producer_filter == v.producer;
 
@@ -57,7 +57,7 @@ impl Frontend {
                                     .format("%d %b %H:%M")
                             ));
                             ui.label(RichText::new(&log.producer).color(Color32::WHITE));
-                            ui.label(RichText::new(&log.log).color(log.level));
+                            ui.label(RichText::new(&log.log).color(log.level.as_color()));
                         });
 
                         ui.add_space(5.0);

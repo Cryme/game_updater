@@ -5,11 +5,17 @@ mod frontend;
 use crate::app::App;
 use crate::backend::Backend;
 
+use crate::frontend::setup_custom_fonts;
+pub use eframe::{WebLogger, WebOptions, WebRunner};
 use std::sync::mpsc::channel;
 use wasm_bindgen_futures::spawn_local;
-pub use eframe::{WebLogger, WebRunner, WebOptions};
 
 const WS_SERVER: &str = "ws://127.0.0.1:3000/ws";
+
+/**
+TODO:
+ - Real work with files
+*/
 
 fn main() {
     WebLogger::init(log::LevelFilter::Debug).ok();
@@ -22,7 +28,8 @@ fn main() {
             .start(
                 "the_canvas_id",
                 web_options,
-                Box::new(|_| {
+                Box::new(|cc| {
+                    setup_custom_fonts(&cc.egui_ctx);
                     let (sender, receiver) = channel();
                     let mut backend = Backend::new(receiver);
 

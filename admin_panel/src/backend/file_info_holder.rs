@@ -38,7 +38,6 @@ pub(crate) struct FileInfoHolder {
     pub(crate) sort_dir: SortDir,
 }
 
-
 impl FileInfoHolder {
     pub fn files(&self) -> Iter<FileInfo> {
         self.files.iter()

@@ -2,7 +2,10 @@ use bincode::config;
 use bincode::error::{DecodeError, EncodeError};
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::io::{BufReader, Cursor, Read};
+use strum::{Display, EnumIter};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TgUser {
@@ -27,6 +30,7 @@ pub struct FileInfo {
     pub modified_at: i64,
     pub updated_by: u32,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FolderInfo {
     pub name: String,
@@ -46,6 +50,7 @@ pub enum ClientPacket {
         name: String,
     },
     AddFile {
+        id: Uuid,
         dir: String,
         name: String,
         file: Vec<u8>,
@@ -58,6 +63,11 @@ pub enum ClientPacket {
     AddPatchNote {
         data: String,
     },
+    CreateFolder {
+        dir: String,
+        name: String,
+    },
+    Logs,
 }
 
 impl ClientPacket {
@@ -80,10 +90,22 @@ impl ClientPacket {
 
                 let dir = read_string(&mut reader)?;
                 let name = read_string(&mut reader)?;
+
+                let mut uuid = [0x0u8; 16];
+
+                reader.read_exact(&mut uuid)?;
+
+                let id = Uuid::from_bytes(uuid);
+
                 let mut file = vec![];
                 reader.read_to_end(&mut file)?;
 
-                Ok(ClientPacket::AddFile { dir, name, file })
+                Ok(ClientPacket::AddFile {
+                    id,
+                    dir,
+                    name,
+                    file,
+                })
             }
             _ => {
                 unimplemented!()
@@ -93,7 +115,12 @@ impl ClientPacket {
     pub fn to_bin(&self) -> Result<Vec<u8>, EncodeError> {
         let mut res = vec![0x0u8];
         match self {
-            ClientPacket::AddFile { dir, name, file } => {
+            ClientPacket::AddFile {
+                id,
+                dir,
+                name,
+                file,
+            } => {
                 res[0] = 0x1;
 
                 let b = dir.as_bytes();
@@ -103,6 +130,8 @@ impl ClientPacket {
                 let b = name.as_bytes();
                 res.extend(b.len().to_le_bytes());
                 res.extend(b);
+
+                res.extend(id.as_bytes());
 
                 res.extend(file);
             }
@@ -129,6 +158,10 @@ pub enum ServerPacket {
         files: Vec<FileInfo>,
         folders: Vec<FolderInfo>,
     },
+    Logs(Vec<Log>),
+    FileUploaded {
+        id: Uuid,
+    },
 }
 
 impl ServerPacket {
@@ -137,5 +170,77 @@ impl ServerPacket {
     }
     pub fn to_bin(&self) -> Result<Vec<u8>, EncodeError> {
         bincode::serde::encode_to_vec(self, config::standard())
+    }
+}
+
+#[derive(Debug)]
+pub struct LogHolder {
+    pub producers: HashSet<String>,
+    pub server_logs: Vec<Log>,
+    pub app_logs: Vec<Log>,
+
+    pub producer_filter: String,
+    pub(crate) max_log_level: LogLevel,
+    pub level_filter: LogLevelFilter,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Display, EnumIter)]
+#[repr(u8)]
+pub enum LogLevelFilter {
+    Debug,
+    Info,
+    Warning,
+    Error,
+    All = 255,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Log {
+    pub level: LogLevel,
+    pub producer: String,
+    pub log: String,
+    pub time: i64,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum LogLevel {
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
+
+impl LogHolder {
+    pub const ALL: &'static str = "All";
+
+    pub fn new() -> Self {
+        let mut producers = HashSet::new();
+        producers.insert(Self::ALL.to_string());
+
+        Self {
+            producers,
+            server_logs: vec![],
+            app_logs: vec![],
+            producer_filter: LogHolder::ALL.to_string(),
+            max_log_level: LogLevel::Info,
+            level_filter: LogLevelFilter::Info,
+        }
+    }
+
+    pub fn add_server(&mut self, logs: Vec<Log>) {
+        for log in logs {
+            self.max_log_level = self.max_log_level.max(log.level);
+
+            if !self.producers.contains(&log.producer) {
+                self.producers.insert(log.producer.clone());
+            }
+
+            self.server_logs.push(log);
+        }
+    }
+
+    pub fn add_app(&mut self, log: Log) {
+        self.app_logs.push(log);
     }
 }

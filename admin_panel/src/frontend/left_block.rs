@@ -11,12 +11,13 @@ pub enum LeftBlockScreen {
 }
 
 impl Frontend {
-    pub fn draw_left_block(&mut self, ui: &mut Ui) {
+    pub fn draw_left_block(&mut self, ui: &mut Ui, width: f32) {
         ui.vertical(|ui| {
             if ui
                 .left_menu_button(
                     "Dashboard",
                     self.right_block_screen == RightBlockScreen::Dashboard,
+                    width,
                 )
                 .clicked()
             {
@@ -29,6 +30,7 @@ impl Frontend {
                 .left_menu_button(
                     "Patch notes",
                     self.right_block_screen == RightBlockScreen::PatchNotes,
+                    width,
                 )
                 .clicked()
             {
@@ -45,6 +47,7 @@ impl Frontend {
                     } else {
                         false
                     },
+                    width,
                 )
                 .clicked()
             {
@@ -56,7 +59,11 @@ impl Frontend {
             }
 
             if ui
-                .left_menu_button("Logs", self.right_block_screen == RightBlockScreen::Logs)
+                .left_menu_button(
+                    "Logs",
+                    self.right_block_screen == RightBlockScreen::Logs,
+                    width,
+                )
                 .clicked()
             {
                 self.to_backend

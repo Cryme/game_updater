@@ -10,7 +10,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0" }
 anyhow = { version = "1" }
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1", features = ["serde", "v4", "fast-rng"] }
+uuid = { version = "1", features = ["serde", "v4"] }
 seahash = { version = "4" }
 flate2 = { version = "1.0" }
 sanitize-filename = { version = "0.5" }
