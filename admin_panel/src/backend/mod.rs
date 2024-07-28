@@ -1,6 +1,7 @@
 use crate::backend::file_info_holder::FileInfoHolder;
 use crate::backend::network::Network;
 use crate::backend::notification::Notification;
+use crate::backend::patch_note::PatchNoteHolder;
 use crate::frontend::right_block::RightBlockScreen;
 use log::{log, Level};
 use shared::admin_panel::{ClientPacket, Log, LogHolder, LogLevel, ServerPacket};
@@ -11,11 +12,13 @@ pub(crate) mod file_info_holder;
 pub(crate) mod network;
 pub(crate) mod notification;
 mod packet_handler;
+mod patch_note;
 
 pub enum BackendCommand {
     OpenFileObserve { dir: String },
-    ShowFileUploading { files: Vec<String> },
     OpenLogs,
+    OpenPatchNotes,
+    OpenPatchNote { id: Option<u32>, data: String },
 }
 
 pub enum FrontendEvent {
@@ -27,11 +30,37 @@ pub enum FrontendEvent {
         dir: String,
         name: String,
     },
+    SkipFileHashCheck {
+        dir: String,
+        name: String,
+        val: bool,
+    },
     CreateFolder {
         dir: String,
         name: String,
     },
-    ChangeScreen(RightBlockScreen),
+    RequestOpenScreen(Screen),
+    SavePatchNote {
+        id: Option<u32>,
+        data: String,
+    },
+    DeletePatchNote {
+        id: u32,
+    },
+}
+
+#[derive(Default, Eq, PartialEq)]
+pub enum Screen {
+    #[default]
+    Dashboard,
+    PatchNotes,
+    EditPatchNote {
+        id: Option<u32>,
+    },
+    Files {
+        dir: String,
+    },
+    Logs,
 }
 
 pub struct Backend {
@@ -42,6 +71,7 @@ pub struct Backend {
     pub(crate) notifications: Vec<Notification>,
 
     pub(crate) log_holder: LogHolder,
+    pub(crate) patch_note_holder: PatchNoteHolder,
     pub(crate) file_info_holder: FileInfoHolder,
 }
 
@@ -55,6 +85,7 @@ impl Backend {
         Self {
             network,
             log_holder: LogHolder::new(),
+            patch_note_holder: PatchNoteHolder::default(),
             from_server: receiver,
             from_frontend: frontend_rx,
             file_info_holder: FileInfoHolder::default(),

@@ -1,17 +1,18 @@
 mod file_info;
 mod logs;
+mod patchnotes;
 
 use crate::frontend::Frontend;
 use egui::Ui;
+
+const PATCH_NOTE_WIDTH: f32 = 800.;
 
 #[derive(Default, Eq, PartialEq)]
 pub enum RightBlockScreen {
     #[default]
     Dashboard,
     PatchNotes,
-    EditPatchNote {
-        id: u32,
-    },
+    EditPatchNote,
     Files {
         dir: String,
     },
@@ -25,8 +26,10 @@ impl Frontend {
 
             match &mut self.right_block_screen {
                 RightBlockScreen::Dashboard => {}
-                RightBlockScreen::PatchNotes => {}
-                RightBlockScreen::EditPatchNote { id } => {}
+                RightBlockScreen::PatchNotes => {
+                    self.draw_patch_notes(ui, PATCH_NOTE_WIDTH);
+                }
+                RightBlockScreen::EditPatchNote => self.draw_patch_note_editor(ui),
                 RightBlockScreen::Files { dir } => {
                     let s = dir.clone();
 

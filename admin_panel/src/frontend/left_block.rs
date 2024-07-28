@@ -1,4 +1,4 @@
-use crate::backend::FrontendEvent;
+use crate::backend::{FrontendEvent, Screen};
 use crate::frontend::right_block::RightBlockScreen;
 use crate::frontend::ui_kit::UiKit;
 use crate::frontend::Frontend;
@@ -22,20 +22,23 @@ impl Frontend {
                 .clicked()
             {
                 self.to_backend
-                    .send(FrontendEvent::ChangeScreen(RightBlockScreen::Dashboard))
+                    .send(FrontendEvent::RequestOpenScreen(Screen::Dashboard))
                     .unwrap();
             }
 
             if ui
                 .left_menu_button(
                     "Patch notes",
-                    self.right_block_screen == RightBlockScreen::PatchNotes,
+                    matches!(
+                        self.right_block_screen,
+                        RightBlockScreen::EditPatchNote { .. }
+                    ),
                     width,
                 )
                 .clicked()
             {
                 self.to_backend
-                    .send(FrontendEvent::ChangeScreen(RightBlockScreen::PatchNotes))
+                    .send(FrontendEvent::RequestOpenScreen(Screen::PatchNotes))
                     .unwrap();
             }
 
@@ -52,8 +55,8 @@ impl Frontend {
                 .clicked()
             {
                 self.to_backend
-                    .send(FrontendEvent::ChangeScreen(RightBlockScreen::Files {
-                        dir: "system/info".to_string(),
+                    .send(FrontendEvent::RequestOpenScreen(Screen::Files {
+                        dir: "./".to_string(),
                     }))
                     .unwrap();
             }
@@ -67,7 +70,7 @@ impl Frontend {
                 .clicked()
             {
                 self.to_backend
-                    .send(FrontendEvent::ChangeScreen(RightBlockScreen::Logs))
+                    .send(FrontendEvent::RequestOpenScreen(Screen::Logs))
                     .unwrap();
             }
         });

@@ -1,5 +1,6 @@
 use crate::backend::notification::{FileUploadState, Notification};
-use crate::backend::{Backend, BackendCommand, FrontendEvent};
+use crate::backend::{Backend, BackendCommand, FrontendEvent, Screen};
+use crate::frontend::easy_mark::DEFAULT_CODE;
 use crate::frontend::right_block::RightBlockScreen;
 use log::{log, Level};
 use shared::admin_panel::ClientPacket;
@@ -10,13 +11,8 @@ impl Backend {
         let mut res = vec![];
 
         for v in self.from_frontend.try_iter() {
-            log!(Level::Debug, "handle event");
-
             match v {
                 FrontendEvent::UploadFiles { dir, files } => {
-                    res.push(BackendCommand::ShowFileUploading {
-                        files: files.iter().map(|v| v.0.clone()).collect(),
-                    });
                     let id = Uuid::new_v4();
                     for f in files {
                         self.notifications.push(Notification::FileUpload {
@@ -39,20 +35,65 @@ impl Backend {
                     self.send_packet(ClientPacket::RemoveFile { dir, name })
                 }
 
-                FrontendEvent::ChangeScreen(new_screen) => match new_screen {
-                    RightBlockScreen::Dashboard => {}
-                    RightBlockScreen::PatchNotes => {}
-                    RightBlockScreen::EditPatchNote { id } => {}
-                    RightBlockScreen::Files { dir } => {
-                        self.send_packet(ClientPacket::FileList { dir: dir.clone() });
+                FrontendEvent::RequestOpenScreen(new_screen) => match new_screen {
+                    Screen::Dashboard => {
+                        todo!()
                     }
-                    RightBlockScreen::Logs => {
+                    Screen::PatchNotes => {
+                        //TODO: add take and skip!
+                        self.send_packet(ClientPacket::PatchNotes { take: 10, skip: 0 });
+                    }
+                    Screen::EditPatchNote { id } => {
+                        if let Some(id) = id {
+                            self.send_packet(ClientPacket::RequestEditPatchNote { id });
+                        } else {
+                            res.push(BackendCommand::OpenPatchNote {
+                                id: None,
+                                data: DEFAULT_CODE.to_string(),
+                            })
+                        }
+                    }
+                    Screen::Files { dir } => {
+                        log!(Level::Debug, "Navigate to |{}|", dir);
+
+                        self.send_packet(ClientPacket::FileList {
+                            dir: if dir.len() == 1 {
+                                "".to_string()
+                            } else {
+                                dir[2..].to_string()
+                            },
+                        });
+                    }
+                    Screen::Logs => {
                         self.send_packet(ClientPacket::Logs);
                     }
                 },
 
                 FrontendEvent::CreateFolder { dir, name } => {
-                    self.send_packet(ClientPacket::CreateFolder { dir, name })
+                    self.send_packet(ClientPacket::CreateFolder {
+                        dir: if dir.len() == 1 {
+                            "".to_string()
+                        } else {
+                            dir[2..].to_string()
+                        },
+                        name,
+                    })
+                }
+
+                FrontendEvent::SavePatchNote { id, data } => {
+                    if let Some(id) = id {
+                        self.send_packet(ClientPacket::SavePatchNote { id, data })
+                    } else {
+                        self.send_packet(ClientPacket::AddPatchNote { data })
+                    }
+                }
+
+                FrontendEvent::DeletePatchNote { id } => {
+                    self.send_packet(ClientPacket::DeletePatchNote { id })
+                }
+
+                FrontendEvent::SkipFileHashCheck { dir, name, val } => {
+                    self.send_packet(ClientPacket::SkipFileHashCheck { dir, name, val })
                 }
             }
         }

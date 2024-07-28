@@ -1,8 +1,11 @@
 mod admin_panel;
 mod db;
+mod file_updater;
+mod log;
 mod statistics;
 
 use crate::admin_panel::admin_socket_handler;
+use crate::file_updater::FileUpdater;
 use axum::routing::get;
 use axum::Router;
 use std::net::SocketAddr;
@@ -26,6 +29,10 @@ async fn main() -> anyhow::Result<()> {
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
         );
+
+    {
+        _ = FileUpdater::instance().await;
+    }
 
     // run it with hyper
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

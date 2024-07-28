@@ -28,6 +28,7 @@ pub(crate) enum FileSortBy {
     Size,
     CreatedAt,
     ModifiedAt,
+    CheckHash,
 }
 
 #[derive(Default)]
@@ -68,6 +69,7 @@ impl FileInfoHolder {
                 FileSortBy::Size => a.size.cmp(&b.size),
                 FileSortBy::CreatedAt => a.created.cmp(&b.created),
                 FileSortBy::ModifiedAt => a.modified_at.cmp(&b.modified_at),
+                FileSortBy::CheckHash => a.skip_hash_check.cmp(&b.skip_hash_check),
             };
 
             if self.sort_dir == SortDir::Asc {
@@ -82,6 +84,7 @@ impl FileInfoHolder {
                 FileSortBy::Size => a.size.cmp(&b.size),
                 FileSortBy::CreatedAt => a.created.cmp(&b.created),
                 FileSortBy::ModifiedAt => a.modified_at.cmp(&b.modified_at),
+                FileSortBy::CheckHash => a.name.cmp(&b.name),
             };
 
             if self.sort_dir == SortDir::Asc {

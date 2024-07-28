@@ -1,5 +1,6 @@
 use crate::backend::{Backend, BackendCommand, FrontendEvent};
 use crate::frontend::dialog::Dialog;
+use crate::frontend::easy_mark::EasyMarkEditor;
 use crate::frontend::left_block::LeftBlockScreen;
 use crate::frontend::right_block::RightBlockScreen;
 use crate::frontend::ui_kit::UiKit;
@@ -7,6 +8,7 @@ use egui::{Align2, Vec2};
 use std::sync::mpsc::Sender;
 
 mod dialog;
+pub mod easy_mark;
 mod left_block;
 mod notification;
 pub(crate) mod right_block;
@@ -15,6 +17,8 @@ mod ui_kit;
 pub struct Frontend {
     left_block_screen: LeftBlockScreen,
     right_block_screen: RightBlockScreen,
+
+    markup_editor: EasyMarkEditor,
 
     to_backend: Sender<FrontendEvent>,
     dialog: Dialog,
@@ -32,6 +36,7 @@ impl Frontend {
             dialog: Dialog::None,
             to_backend,
             backend,
+            markup_editor: Default::default(),
         }
     }
 
@@ -123,9 +128,18 @@ impl Frontend {
                     self.right_block_screen = RightBlockScreen::Files { dir }
                 }
 
-                BackendCommand::ShowFileUploading { files } => {}
-
                 BackendCommand::OpenLogs => self.right_block_screen = RightBlockScreen::Logs,
+
+                BackendCommand::OpenPatchNotes => {
+                    self.right_block_screen = RightBlockScreen::PatchNotes
+                }
+
+                BackendCommand::OpenPatchNote { id, data } => {
+                    self.markup_editor.code = data;
+                    self.markup_editor.edit_id = id;
+
+                    self.right_block_screen = RightBlockScreen::EditPatchNote;
+                }
             }
         }
     }

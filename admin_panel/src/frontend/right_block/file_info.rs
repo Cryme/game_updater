@@ -1,8 +1,8 @@
 use crate::backend::file_info_holder::{FileInfoHolder, FileSortBy, SortDir};
-use crate::backend::FrontendEvent;
+use crate::backend::{FrontendEvent, Screen};
 use crate::frontend::dialog::Dialog;
 use crate::frontend::right_block::RightBlockScreen;
-use crate::frontend::ui_kit::{DrawCb, UiKit, DELETE_ICON};
+use crate::frontend::ui_kit::{icon, DrawCb, UiKit, DELETE_TOKEN};
 use crate::frontend::Frontend;
 use bytesize::ByteSize;
 use eframe::epaint::Color32;
@@ -28,13 +28,13 @@ impl Frontend {
                     prev += v;
 
                     if ui
-                        .label_u(RichText::new(v).underline().color(Color32::WHITE))
+                        .clickable_label(RichText::new(v).underline().color(Color32::WHITE))
                         .on_hover_cursor(CursorIcon::PointingHand)
                         .clicked()
                     {
                         self.to_backend
-                            .send(FrontendEvent::ChangeScreen(RightBlockScreen::Files {
-                                dir: prev.clone(),
+                            .send(FrontendEvent::RequestOpenScreen(Screen::Files {
+                                dir: prev.to_string(),
                             }))
                             .unwrap();
                     }
@@ -113,7 +113,7 @@ impl Frontend {
                         })
                     };
                     let f2 = || {
-                        self.emit_event(FrontendEvent::ChangeScreen(RightBlockScreen::Files {
+                        self.emit_event(FrontendEvent::RequestOpenScreen(Screen::Files {
                             dir: dir.to_string() + "/" + &f.name,
                         }))
                     };
@@ -123,12 +123,24 @@ impl Frontend {
                 }
 
                 for f in self.backend.file_info_holder.files() {
-                    f.draw_cb(ui, || {
-                        self.emit_event(FrontendEvent::DeleteFile {
-                            dir: dir.to_string(),
-                            name: f.name.clone(),
-                        })
-                    });
+                    f.draw_cb(
+                        ui,
+                        (
+                            || {
+                                self.emit_event(FrontendEvent::DeleteFile {
+                                    dir: dir.to_string(),
+                                    name: f.name.clone(),
+                                })
+                            },
+                            || {
+                                self.emit_event(FrontendEvent::SkipFileHashCheck {
+                                    dir: dir.to_string(),
+                                    name: f.name.clone(),
+                                    val: !f.skip_hash_check,
+                                })
+                            },
+                        ),
+                    );
 
                     ui.separator();
                 }
@@ -174,8 +186,8 @@ impl FileInfoHolder {
     }
 }
 
-impl<F: FnOnce()> DrawCb<F> for FileInfo {
-    fn draw_cb(&self, ui: &mut Ui, callback: F) {
+impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FileInfo {
+    fn draw_cb(&self, ui: &mut Ui, callback: (F1, F2)) {
         ui.horizontal(|ui| {
             ui.set_height(ROW_HEIGHT);
 
@@ -224,12 +236,25 @@ impl<F: FnOnce()> DrawCb<F> for FileInfo {
 
             ui.separator();
 
+            ui.scope(|ui| {
+                ui.set_width(FileSortBy::CheckHash.width());
+                ui.set_height(ROW_HEIGHT);
+
+                let mut v = self.skip_hash_check;
+
+                if ui.checkbox(&mut v, "").changed() {
+                    callback.1();
+                }
+            });
+
+            ui.separator();
+
             if ui
-                .add(Button::new(DELETE_ICON).fill(Color32::DARK_RED))
+                .label(icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED))
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .clicked()
             {
-                callback();
+                callback.0();
             }
         });
     }
@@ -243,7 +268,7 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FolderInfo {
                 ui.set_width(FileSortBy::Name.width());
 
                 if ui
-                    .label_u(
+                    .clickable_label(
                         RichText::new(&self.name)
                             .color(Color32::LIGHT_BLUE)
                             .underline(),
@@ -294,8 +319,15 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FolderInfo {
 
             ui.separator();
 
+            ui.scope(|ui| {
+                ui.set_width(FileSortBy::CheckHash.width());
+                ui.set_height(ROW_HEIGHT);
+            });
+
+            ui.separator();
+
             if ui
-                .add(Button::new(DELETE_ICON).fill(Color32::DARK_RED))
+                .label(icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED))
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .clicked()
             {
@@ -311,6 +343,7 @@ impl FileSortBy {
             FileSortBy::Name => 200.,
             FileSortBy::Size => 70.,
             FileSortBy::ModifiedAt | FileSortBy::CreatedAt => 160.,
+            FileSortBy::CheckHash => 100.,
         }
     }
 }

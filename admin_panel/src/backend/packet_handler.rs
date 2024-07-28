@@ -16,13 +16,21 @@ impl Backend {
                     folders,
                 } => {
                     self.file_info_holder.set(files, folders);
-                    res.push(BackendCommand::OpenFileObserve { dir });
+                    res.push(BackendCommand::OpenFileObserve {
+                        dir: if dir.is_empty() {
+                            ".".to_string()
+                        } else {
+                            "./".to_owned() + &*dir
+                        },
+                    });
                 }
+
                 ServerPacket::Logs(logs) => {
                     self.log_holder.add_server(logs);
 
                     res.push(BackendCommand::OpenLogs);
                 }
+
                 ServerPacket::FileUploaded { id } => {
                     self.debug(&format!("{:#?}", self.notifications));
 
@@ -37,6 +45,27 @@ impl Backend {
                             }
                         }
                     }
+                }
+
+                ServerPacket::PatchNotes {
+                    total,
+                    patch_notes,
+                    take,
+                    skip,
+                } => {
+                    self.patch_note_holder.patch_notes = patch_notes;
+                    self.patch_note_holder.total = total;
+                    self.patch_note_holder.take = take;
+                    self.patch_note_holder.skip = skip;
+
+                    res.push(BackendCommand::OpenPatchNotes);
+                }
+
+                ServerPacket::OpenPatchNote(patch_note) => {
+                    res.push(BackendCommand::OpenPatchNote {
+                        id: Some(patch_note.id),
+                        data: patch_note.data,
+                    })
                 }
             }
         }

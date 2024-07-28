@@ -8,6 +8,12 @@ use strum::{Display, EnumIter};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct PatchNote {
+    pub id: u32,
+    pub data: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TgUser {
     id: u64,
     user_name: String,
@@ -29,6 +35,7 @@ pub struct FileInfo {
     pub created: i64,
     pub modified_at: i64,
     pub updated_by: u32,
+    pub skip_hash_check: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,10 +62,19 @@ pub enum ClientPacket {
         name: String,
         file: Vec<u8>,
     },
-    PatchNotes,
-    EditPatchNote {
+    PatchNotes {
+        take: u32,
+        skip: u32,
+    },
+    RequestEditPatchNote {
+        id: u32,
+    },
+    SavePatchNote {
         id: u32,
         data: String,
+    },
+    DeletePatchNote {
+        id: u32,
     },
     AddPatchNote {
         data: String,
@@ -68,6 +84,11 @@ pub enum ClientPacket {
         name: String,
     },
     Logs,
+    SkipFileHashCheck {
+        dir: String,
+        name: String,
+        val: bool,
+    },
 }
 
 impl ClientPacket {
@@ -162,6 +183,14 @@ pub enum ServerPacket {
     FileUploaded {
         id: Uuid,
     },
+
+    PatchNotes {
+        take: u32,
+        skip: u32,
+        total: u32,
+        patch_notes: Vec<PatchNote>,
+    },
+    OpenPatchNote(PatchNote),
 }
 
 impl ServerPacket {

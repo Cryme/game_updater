@@ -23,7 +23,7 @@ pub async fn admin_socket_handler(
         String::from("Unknown browser")
     };
 
-    println!("`{user_agent}` at {addr} connected.");
+    debug!("`{user_agent}` at {addr} connected.");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
     ws.on_upgrade(move |socket| handle_socket(socket, addr))
@@ -32,9 +32,9 @@ pub async fn admin_socket_handler(
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     // send a ping (unsupported by some browsers) just to kick things off and get a response
     if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
-        println!("Pinged {who}...");
+        debug!("Pinged {who}...");
     } else {
-        println!("Could not send ping {who}!");
+        error!("Could not send ping {who}!");
         // no Error here since the only thing we can do is to close the connection.
         // If we can not send messages, there is no way to salvage the statemachine anyway.
         return;
@@ -78,14 +78,13 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 async fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), Option<ServerPacket>> {
     match msg {
         Message::Text(t) => {
-            println!(">>> {who} sent text {t}");
+            debug!(">>> {who} sent text {t}");
         }
         Message::Binary(data) => {
             debug!(">>> New packet!");
 
             match ClientPacket::from_bin(&data) {
                 Ok(packet) => {
-                    debug!("Ok");
                     return ControlFlow::Continue(packet.handle().await);
                 }
                 Err(e) => {
@@ -95,24 +94,24 @@ async fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), Optio
         }
         Message::Close(c) => {
             if let Some(cf) = c {
-                println!(
+                debug!(
                     ">>> {} sent close with code {} and reason `{}`",
                     who, cf.code, cf.reason
                 );
             } else {
-                println!(">>> {who} somehow sent close message without CloseFrame");
+                debug!(">>> {who} somehow sent close message without CloseFrame");
             }
 
             return ControlFlow::Break(());
         }
         Message::Pong(v) => {
-            println!(">>> {who} sent pong with {v:?}");
+            debug!(">>> {who} sent pong with {v:?}");
         }
         // You should never need to manually handle Message::Ping, as axum's websocket library
         // will do so for you automagically by replying with Pong and copying the v according to
         // spec. But if you need the contents of the pings you can see them here.
         Message::Ping(v) => {
-            println!(">>> {who} sent ping with {v:?}");
+            debug!(">>> {who} sent ping with {v:?}");
         }
     }
 

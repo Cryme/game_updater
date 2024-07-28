@@ -6,8 +6,10 @@ use shared::admin_panel::LogLevel;
 use std::fmt::Display;
 use strum::IntoEnumIterator;
 
-pub const DELETE_ICON: &str = "🗑";
+pub const DELETE_TOKEN: &str = "\u{f1f8}";
+pub const EDIT_TOKEN: &str = "\u{f044}";
 pub const CLOSE_TOKEN: &str = "\u{f00d}";
+pub const INFO_TOKEN: &str = "\u{f05a}";
 
 pub trait DrawCb<F> {
     fn draw_cb(&self, ui: &mut Ui, callback: F);
@@ -16,7 +18,7 @@ pub trait DrawCb<F> {
 pub trait UiKit {
     fn left_menu_button(&mut self, text: impl Into<String>, selected: bool, width: f32)
         -> Response;
-    fn label_u(&mut self, text: impl Into<WidgetText>) -> Response;
+    fn clickable_label(&mut self, text: impl Into<WidgetText>) -> Response;
     fn button_s(&mut self, text: impl Into<WidgetText>, width: f32, height: f32) -> Response;
 }
 
@@ -34,10 +36,12 @@ impl UiKit for Ui {
         self.add(b).on_hover_cursor(CursorIcon::PointingHand)
     }
 
-    fn label_u(&mut self, text: impl Into<WidgetText>) -> Response {
+    fn clickable_label(&mut self, text: impl Into<WidgetText>) -> Response {
         self.add(Label::new(text).selectable(false).sense(Sense::click()))
     }
 
+    ///Button with fixed **minimum** width and height
+    /// Also **on hover** cursor set to pointer
     fn button_s(&mut self, text: impl Into<WidgetText>, width: f32, height: f32) -> Response {
         self.add(Button::new(text).min_size(Vec2::new(width, height)))
             .on_hover_cursor(CursorIcon::PointingHand)
