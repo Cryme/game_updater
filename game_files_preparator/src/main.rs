@@ -71,7 +71,7 @@ fn main() {
 
             current_folder = &mut root_folder;
 
-            let chain: Vec<_> = rel_path.split("/").collect();
+            let chain: Vec<_> = rel_path.split('/').collect();
 
             for folder_name in &chain[0..chain.len() - 1] {
                 println!("relocating to {}", folder_name);
@@ -128,12 +128,12 @@ fn main() {
 
     root_folder.calc_size();
 
-    let out_path = current_dir.join(Path::new(ROOT_FOLDER_INFO_FILE_NAME));
+    let out_path = current_dir.join(Path::new("./database").join(ROOT_FOLDER_INFO_FILE_NAME));
 
     let mut file = File::create(out_path.clone()).unwrap();
 
     file.write_all(
-        &ron::ser::to_string_pretty(&root_folder, ron::ser::PrettyConfig::default())
+        ron::ser::to_string_pretty(&root_folder, ron::ser::PrettyConfig::default())
             .unwrap()
             .as_bytes(),
     )

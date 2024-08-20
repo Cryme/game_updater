@@ -8,6 +8,7 @@ use crate::backend::Backend;
 use crate::frontend::setup_custom_fonts;
 pub use eframe::{WebLogger, WebOptions, WebRunner};
 use std::sync::mpsc::channel;
+use gloo_timers::future::TimeoutFuture;
 use wasm_bindgen_futures::spawn_local;
 
 const WS_SERVER: &str = "ws://127.0.0.1:3000/ws";
@@ -30,6 +31,17 @@ fn main() {
                 web_options,
                 Box::new(|cc| {
                     setup_custom_fonts(&cc.egui_ctx);
+
+                    let ctx = cc.egui_ctx.clone();
+
+                    spawn_local(async move  {
+                        loop {
+                            ctx.request_repaint();
+
+                            TimeoutFuture::new(1_000).await;
+                        }
+                    });
+
                     let (sender, receiver) = channel();
                     let mut backend = Backend::new(receiver);
 

@@ -42,7 +42,11 @@ impl EasyMarkEditor {
                     .on_hover_ui(nested_hotkeys_ui)
                     .on_hover_cursor(CursorIcon::Help);
 
-                ui.button_s("Save", 0., 0.)
+                if self.edit_id.is_some() {
+                    ui.button_s("Save", 0., 0.)
+                } else {
+                    ui.button_s("Create", 0., 0.)
+                }
             })
             .inner;
 

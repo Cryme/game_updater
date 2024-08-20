@@ -15,9 +15,14 @@ pub struct Network {
 
 impl Network {
     pub(super) fn send_packet(&self, packet: ClientPacket) {
+        log!(Level::Debug, "Uploading --1");
         if let Some(mut v) = self.to_client.clone() {
+            log!(Level::Debug, "Uploading --2");
             spawn_local(async move {
+                log!(Level::Debug, "Uploading --3");
                 let _ = v.send(packet).await;
+
+                log!(Level::Debug, "Uploading --4");
             });
         }
     }

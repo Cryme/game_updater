@@ -1,6 +1,7 @@
+use crate::backend::events::remove_leading_dot;
 use crate::backend::notification::{FileUploadState, Notification};
 use crate::backend::{Backend, BackendCommand};
-use shared::admin_panel::ServerPacket;
+use shared::admin_panel::{ClientPacket, ServerPacket};
 
 impl Backend {
     pub(crate) fn handle_packets(&mut self) -> Vec<BackendCommand> {
@@ -15,14 +16,15 @@ impl Backend {
                     files,
                     folders,
                 } => {
-                    self.file_info_holder.set(files, folders);
-                    res.push(BackendCommand::OpenFileObserve {
-                        dir: if dir.is_empty() {
-                            ".".to_string()
-                        } else {
-                            "./".to_owned() + &*dir
-                        },
-                    });
+                    let dir = if dir.is_empty() {
+                        ".".to_string()
+                    } else {
+                        "./".to_owned() + &*dir
+                    };
+
+                    res.push(BackendCommand::OpenFileObserve { dir: dir.clone() });
+
+                    self.file_info_holder.set(files, folders, dir);
                 }
 
                 ServerPacket::Logs(logs) => {
@@ -32,8 +34,6 @@ impl Backend {
                 }
 
                 ServerPacket::FileUploaded { id } => {
-                    self.debug(&format!("{:#?}", self.notifications));
-
                     for v in &mut self.notifications {
                         match v {
                             Notification::FileUpload {
@@ -41,6 +41,33 @@ impl Backend {
                             } => {
                                 if id.eq(v_id) {
                                     *state = FileUploadState::Processing;
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ServerPacket::FileProceeded { id } => {
+                    for v in &mut self.notifications {
+                        match v {
+                            Notification::FileUpload {
+                                id: v_id,
+                                state,
+                                dir,
+                                ..
+                            } => {
+                                if id.eq(v_id) {
+                                    if dir == &self.file_info_holder.current_dir {
+                                        self.network.send_packet(ClientPacket::FileList {
+                                            dir: remove_leading_dot(dir),
+                                        })
+                                    }
+
+                                    *state = FileUploadState::Completed;
+
+                                    break;
                                 }
                             }
                         }

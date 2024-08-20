@@ -5,14 +5,16 @@ mod log;
 mod statistics;
 
 use crate::admin_panel::admin_socket_handler;
-use crate::file_updater::FileUpdater;
+use crate::file_updater::FileHolder;
 use axum::routing::get;
 use axum::Router;
 use std::net::SocketAddr;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use crate::db::Database;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -30,16 +32,16 @@ async fn main() -> anyhow::Result<()> {
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
         );
 
-    {
-        _ = FileUpdater::instance().await;
-    }
-
     // run it with hyper
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
 
-    tracing::info!("listening on {}", listener.local_addr().unwrap());
+    info!("{}", Database::instance().info().await);
+    info!("{}", FileHolder::instance().await.info());
+
+    info!("listening on {}", listener.local_addr()?);
+
 
     axum::serve(
         listener,

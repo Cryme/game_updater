@@ -2,7 +2,6 @@ use crate::backend::file_info_holder::FileInfoHolder;
 use crate::backend::network::Network;
 use crate::backend::notification::Notification;
 use crate::backend::patch_note::PatchNoteHolder;
-use crate::frontend::right_block::RightBlockScreen;
 use log::{log, Level};
 use shared::admin_panel::{ClientPacket, Log, LogHolder, LogLevel, ServerPacket};
 use std::sync::mpsc::{channel, Receiver};
@@ -22,20 +21,23 @@ pub enum BackendCommand {
 }
 
 pub enum FrontendEvent {
+    CreateFolder {
+        dir: String,
+        name: String,
+    },
+    RemoveFolder {
+        dir: String,
+        name: String,
+    },
     UploadFiles {
         dir: String,
         files: Vec<(String, Vec<u8>)>,
     },
-    DeleteFile {
+    RemoveFile {
         dir: String,
         name: String,
     },
     SkipFileHashCheck {
-        dir: String,
-        name: String,
-        val: bool,
-    },
-    CreateFolder {
         dir: String,
         name: String,
     },

@@ -4,10 +4,12 @@ use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{ConnectInfo, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum_extra::TypedHeader;
-use futures_util::StreamExt;
+use futures_util::{SinkExt, StreamExt};
 use shared::admin_panel::{ClientPacket, ServerPacket};
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
+use tokio::spawn;
+use tokio::sync::mpsc::Sender;
 use tracing::{debug, error};
 
 pub async fn admin_socket_handler(
@@ -40,42 +42,52 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         return;
     }
 
-    // this will likely be the Pong for our Ping or a hello message from client.
-    // waiting for message from a client will block this task, but will not block other client's
-    // connections.
-    while let Some(msg) = socket.next().await {
+    let (to_client, mut listener) = tokio::sync::mpsc::channel::<ServerPacket>(10);
+
+    let (mut write, mut read) = socket.split();
+
+    spawn(async move {
+        while let Some(packet) = listener.recv().await {
+            let data = packet.to_bin();
+
+            if let Err(e) = data {
+                error!("Error encoding packet: {e}");
+                continue;
+            }
+
+            if let Err(e) = write.send(Message::Binary(data.unwrap())).await {
+                debug!("Can't send: {e}");
+                break;
+            }
+        }
+
+        debug!("Drop write!");
+    });
+
+    while let Some(msg) = read.next().await {
         match msg {
-            Ok(msg) => match process_message(msg, who).await {
-                ControlFlow::Continue(p) => {
-                    if let Some(packet) = p {
-                        let data = packet.to_bin();
-
-                        if let Err(e) = data {
-                            error!("Error encoding packet: {e}");
-                            continue;
-                        }
-
-                        if let Err(e) = socket.send(Message::Binary(data.unwrap())).await {
-                            debug!("Can't send: {e}");
-                            return;
-                        }
-                    };
-                }
-                ControlFlow::Break(_) => {
-                    return;
-                }
+            Ok(msg) => match process_message(msg, who, to_client.clone()).await {
+                ControlFlow::Continue(_) => continue,
+                ControlFlow::Break(_) => break,
             },
 
             Err(e) => {
                 debug!("Can't receive {e}");
-                return;
+
+                break;
             }
         }
     }
+
+    debug!("Drop read!");
 }
 
 /// helper to print contents of messages to stdout. Has special treatment for Close.
-async fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), Option<ServerPacket>> {
+async fn process_message(
+    msg: Message,
+    who: SocketAddr,
+    to_client: Sender<ServerPacket>,
+) -> ControlFlow<(), ()> {
     match msg {
         Message::Text(t) => {
             debug!(">>> {who} sent text {t}");
@@ -85,7 +97,16 @@ async fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), Optio
 
             match ClientPacket::from_bin(&data) {
                 Ok(packet) => {
-                    return ControlFlow::Continue(packet.handle().await);
+                    match packet {
+                        ClientPacket::FileList { .. } => {
+                            debug!(">>> {packet:?}");
+                        }
+                        _ => {}
+                    }
+
+                    spawn(async move { packet.handle(to_client).await });
+
+                    return ControlFlow::Continue(());
                 }
                 Err(e) => {
                     error!(">>> Deserialize: {e}");
@@ -115,5 +136,5 @@ async fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), Optio
         }
     }
 
-    ControlFlow::Continue(None)
+    ControlFlow::Continue(())
 }

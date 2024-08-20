@@ -1,7 +1,6 @@
 use crate::backend::notification::{FileUploadState, Notification};
 use crate::backend::{Backend, BackendCommand, FrontendEvent, Screen};
 use crate::frontend::easy_mark::DEFAULT_CODE;
-use crate::frontend::right_block::RightBlockScreen;
 use log::{log, Level};
 use shared::admin_panel::ClientPacket;
 use uuid::Uuid;
@@ -14,6 +13,7 @@ impl Backend {
             match v {
                 FrontendEvent::UploadFiles { dir, files } => {
                     let id = Uuid::new_v4();
+
                     for f in files {
                         self.notifications.push(Notification::FileUpload {
                             id,
@@ -24,15 +24,18 @@ impl Backend {
 
                         self.send_packet(ClientPacket::AddFile {
                             id,
-                            dir: dir.clone(),
+                            dir: remove_leading_dot(&dir),
                             name: f.0,
                             file: f.1,
                         });
                     }
                 }
 
-                FrontendEvent::DeleteFile { dir, name } => {
-                    self.send_packet(ClientPacket::RemoveFile { dir, name })
+                FrontendEvent::RemoveFile { dir, name } => {
+                    self.send_packet(ClientPacket::RemoveFile {
+                        dir: remove_leading_dot(&dir),
+                        name,
+                    })
                 }
 
                 FrontendEvent::RequestOpenScreen(new_screen) => match new_screen {
@@ -57,11 +60,7 @@ impl Backend {
                         log!(Level::Debug, "Navigate to |{}|", dir);
 
                         self.send_packet(ClientPacket::FileList {
-                            dir: if dir.len() == 1 {
-                                "".to_string()
-                            } else {
-                                dir[2..].to_string()
-                            },
+                            dir: remove_leading_dot(&dir),
                         });
                     }
                     Screen::Logs => {
@@ -71,11 +70,7 @@ impl Backend {
 
                 FrontendEvent::CreateFolder { dir, name } => {
                     self.send_packet(ClientPacket::CreateFolder {
-                        dir: if dir.len() == 1 {
-                            "".to_string()
-                        } else {
-                            dir[2..].to_string()
-                        },
+                        dir: remove_leading_dot(&dir),
                         name,
                     })
                 }
@@ -92,12 +87,31 @@ impl Backend {
                     self.send_packet(ClientPacket::DeletePatchNote { id })
                 }
 
-                FrontendEvent::SkipFileHashCheck { dir, name, val } => {
-                    self.send_packet(ClientPacket::SkipFileHashCheck { dir, name, val })
+                FrontendEvent::SkipFileHashCheck { dir, name } => {
+                    self.send_packet(ClientPacket::SkipFileHashCheck {
+                        dir: remove_leading_dot(&dir),
+                        name,
+                    })
+                }
+                FrontendEvent::RemoveFolder { dir, name } => {
+                    self.send_packet(ClientPacket::RemoveFolder {
+                        dir: remove_leading_dot(&dir),
+                        name,
+                    })
                 }
             }
         }
 
         res
+    }
+}
+
+pub fn remove_leading_dot(dir: &str) -> String {
+    log!(Level::Debug, "|{dir}|");
+
+    if dir.len() == 1 {
+        "".to_string()
+    } else {
+        dir[2..].to_string()
     }
 }

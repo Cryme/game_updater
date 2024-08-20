@@ -1,107 +1,187 @@
-use crate::file_updater::FileUpdater;
+use crate::file_updater::FileHolder;
 use shared::admin_panel::{
     ClientPacket, FileInfo, FolderInfo, Log, LogLevel, PatchNote, ServerPacket,
 };
-use std::fs::File;
+use tokio::sync::mpsc::Sender;
 use tracing::log::debug;
+use crate::db::Database;
 
 pub(crate) trait HandleClientPacket {
-    async fn handle(self) -> Option<ServerPacket>;
+    async fn handle(self, to_client: Sender<ServerPacket>);
 }
 
 impl HandleClientPacket for ClientPacket {
-    async fn handle(self) -> Option<ServerPacket> {
+    async fn handle(self, to_client: Sender<ServerPacket>) {
         match self {
             ClientPacket::FileList { dir } => {
-                let Some((folders, files)) = FileUpdater::get_folder_and_file_infos(&dir).await
+                let Some((folders, files)) = FileHolder::get_folder_and_file_infos(&dir).await
                 else {
-                    return None;
+                    return;
                 };
 
-                Some(ServerPacket::FileList {
-                    dir,
-                    files,
-                    folders,
-                })
+                let _ = to_client
+                    .send(ServerPacket::FileList {
+                        dir,
+                        files,
+                        folders,
+                    })
+                    .await;
             }
-            ClientPacket::RemoveFile { dir, name } => {
-                debug!("{dir} {name}");
 
-                None
+            ClientPacket::CreateFolder { dir, name } => {
+                FileHolder::create_folder(&dir, &name).await;
+
+                debug!(">>> Created folder {name} in dir: {dir}");
+
+                let Some((folders, files)) = FileHolder::get_folder_and_file_infos(&dir).await
+                else {
+                    return;
+                };
+
+                let _ = to_client
+                    .send(ServerPacket::FileList {
+                        dir,
+                        files,
+                        folders,
+                    })
+                    .await;
             }
+
+            ClientPacket::RemoveFile { dir, name } => {
+                FileHolder::delete_file(&dir, &name).await;
+
+                debug!(">>> Deleted file {name} in dir: {dir}");
+
+                let Some((folders, files)) = FileHolder::get_folder_and_file_infos(&dir).await
+                else {
+                    return;
+                };
+
+                let _ = to_client
+                    .send(ServerPacket::FileList {
+                        dir,
+                        files,
+                        folders,
+                    })
+                    .await;
+            }
+
+            ClientPacket::RemoveFolder { dir, name } => {
+                if dir.is_empty() {
+                    FileHolder::delete_folder(&name).await;
+                } else {
+                    FileHolder::delete_folder(&format!("{dir}/{name}")).await;
+                }
+
+                debug!(">>> Deleted folder {name} in dir {dir}");
+
+                let Some((folders, files)) = FileHolder::get_folder_and_file_infos(&dir).await
+                else {
+                    return;
+                };
+
+                let _ = to_client
+                    .send(ServerPacket::FileList {
+                        dir,
+                        files,
+                        folders,
+                    })
+                    .await;
+            }
+
             ClientPacket::AddFile {
                 id,
                 dir,
                 name,
                 file,
             } => {
-                debug!(">>> Add file to dir: {dir} {name}");
+                let _ = to_client.send(ServerPacket::FileUploaded { id }).await;
 
-                Some(ServerPacket::FileUploaded { id })
+                FileHolder::add_file(&dir, &name, file).await;
+
+                debug!(">>> File {name} added to dir {dir}");
+
+                let _ = to_client.send(ServerPacket::FileProceeded { id }).await;
             }
-            ClientPacket::PatchNotes { take, skip } => Some(ServerPacket::PatchNotes {
-                take: 10,
-                skip: 0,
-                total: 2,
-                patch_notes: vec![
-                    PatchNote {
-                        id: 1,
-                        data: TEMP.to_string(),
-                    },
-                    PatchNote {
-                        id: 2,
-                        data: TEMP.to_string(),
-                    },
-                ],
-            }),
+
+            ClientPacket::PatchNotes { take, skip } => {
+                let patch_notes = Database::instance().patch_notes().await;
+
+                let _ = to_client
+                    .send(ServerPacket::PatchNotes {
+                        take: patch_notes.len() as u32,
+                        skip: 0,
+                        total: patch_notes.len() as u32,
+                        patch_notes,
+                    })
+                    .await;
+            }
+
             ClientPacket::SavePatchNote { id, data } => {
+                Database::instance().update_patch_note(id, data).await;
                 debug!(">>> Edit patch note {id}!");
-
-                None
             }
+
             ClientPacket::DeletePatchNote { id } => {
                 debug!(">>> Delete patch note {id}!");
-
-                None
             }
+
             ClientPacket::AddPatchNote { data } => {
                 debug!(">>> Create patch note");
+                let patch_note = Database::instance().add_patch_note(data).await;
 
-                None
+                let _ = to_client
+                    .send(ServerPacket::OpenPatchNote(patch_note))
+                    .await;
             }
-            ClientPacket::CreateFolder { dir, name } => {
-                debug!(">>> Create folder {name} in dir: {dir}");
 
-                None
+            ClientPacket::Logs => {
+                let _ = to_client
+                    .send(ServerPacket::Logs(vec![Log {
+                        level: LogLevel::Info,
+                        producer: "Monitor".to_string(),
+                        log: "bla bla".to_string(),
+                        time: chrono::Local::now().timestamp(),
+                    }]))
+                    .await;
             }
-            ClientPacket::Logs => Some(ServerPacket::Logs(vec![Log {
-                level: LogLevel::Info,
-                producer: "Monitor".to_string(),
-                log: "bla bla".to_string(),
-                time: chrono::Local::now().timestamp(),
-            }])),
+
             ClientPacket::RequestEditPatchNote { id } => {
-                Some(ServerPacket::OpenPatchNote(PatchNote {
-                    id,
-                    data: TEMP.to_string(),
-                }))
+                let _ = to_client
+                    .send(ServerPacket::OpenPatchNote(PatchNote {
+                        id,
+                        data: TEMP.to_string(),
+                    }))
+                    .await;
             }
-            ClientPacket::SkipFileHashCheck { dir, name, val } => {
-                debug!(">>> Set hash check to {val} for file {name} in dir: {dir}");
 
-                None
+            ClientPacket::SkipFileHashCheck { dir, name } => {
+                FileHolder::toggle_hash_check(&dir, &name).await;
+
+                debug!(">>> Toggled hash check for file {name} in dir: {dir}");
+
+                let Some((folders, files)) = FileHolder::get_folder_and_file_infos(&dir).await
+                else {
+                    return;
+                };
+
+                let _ = to_client
+                    .send(ServerPacket::FileList {
+                        dir,
+                        files,
+                        folders,
+                    })
+                    .await;
             }
         }
     }
 }
 
-impl FileUpdater {
+impl FileHolder {
     async fn get_folder_and_file_infos(dir: &str) -> Option<(Vec<FolderInfo>, Vec<FileInfo>)> {
         let instance = Self::instance().await;
 
-        let Some(info) = instance.folder_info(dir) else {
-            return None;
-        };
+        let info = instance.folder_info(dir)?;
 
         let mut folders = Vec::with_capacity(info.folders.len());
         let mut files = Vec::with_capacity(info.files.len());
@@ -113,6 +193,7 @@ impl FileUpdater {
                 created: v.created_at,
                 modified_at: v.updated_at,
                 updated_by: 0,
+                deleted: v.deleted,
             })
         }
 
@@ -124,6 +205,7 @@ impl FileUpdater {
                 modified_at: v.updated_at,
                 updated_by: 0,
                 skip_hash_check: v.skip_hash_check,
+                deleted: v.deleted,
             })
         }
 

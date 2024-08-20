@@ -18,6 +18,8 @@ pub struct Frontend {
     left_block_screen: LeftBlockScreen,
     right_block_screen: RightBlockScreen,
 
+    show_deleted_files: bool,
+
     markup_editor: EasyMarkEditor,
 
     to_backend: Sender<FrontendEvent>,
@@ -34,6 +36,7 @@ impl Frontend {
             left_block_screen: Default::default(),
             right_block_screen: Default::default(),
             dialog: Dialog::None,
+            show_deleted_files: false,
             to_backend,
             backend,
             markup_editor: Default::default(),
@@ -125,7 +128,7 @@ impl Frontend {
         for v in self.backend.on_update() {
             match v {
                 BackendCommand::OpenFileObserve { dir } => {
-                    self.right_block_screen = RightBlockScreen::Files { dir }
+                    self.right_block_screen = RightBlockScreen::Files;
                 }
 
                 BackendCommand::OpenLogs => self.right_block_screen = RightBlockScreen::Logs,

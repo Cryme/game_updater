@@ -13,9 +13,7 @@ pub enum RightBlockScreen {
     Dashboard,
     PatchNotes,
     EditPatchNote,
-    Files {
-        dir: String,
-    },
+    Files,
     Logs,
 }
 
@@ -26,15 +24,15 @@ impl Frontend {
 
             match &mut self.right_block_screen {
                 RightBlockScreen::Dashboard => {}
-                RightBlockScreen::PatchNotes => {
-                    self.draw_patch_notes(ui, PATCH_NOTE_WIDTH);
-                }
-                RightBlockScreen::EditPatchNote => self.draw_patch_note_editor(ui),
-                RightBlockScreen::Files { dir } => {
-                    let s = dir.clone();
 
-                    self.draw_file_infos(ui, &s);
+                RightBlockScreen::PatchNotes => self.draw_patch_notes(ui, PATCH_NOTE_WIDTH),
+
+                RightBlockScreen::EditPatchNote => self.draw_patch_note_editor(ui),
+
+                RightBlockScreen::Files => {
+                    self.draw_file_infos(ui, &self.backend.file_info_holder.current_dir.clone())
                 }
+
                 RightBlockScreen::Logs => self.draw_logs(ui),
             }
         });

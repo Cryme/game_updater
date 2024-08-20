@@ -7,7 +7,8 @@ use std::io::{BufReader, Cursor, Read};
 use strum::{Display, EnumIter};
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct PatchNote {
     pub id: u32,
     pub data: String,
@@ -36,6 +37,7 @@ pub struct FileInfo {
     pub modified_at: i64,
     pub updated_by: u32,
     pub skip_hash_check: bool,
+    pub deleted: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -45,6 +47,7 @@ pub struct FolderInfo {
     pub created: i64,
     pub modified_at: i64,
     pub updated_by: u32,
+    pub deleted: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -52,7 +55,11 @@ pub enum ClientPacket {
     FileList {
         dir: String,
     },
-    RemoveFile {
+    CreateFolder {
+        dir: String,
+        name: String,
+    },
+    RemoveFolder {
         dir: String,
         name: String,
     },
@@ -61,6 +68,10 @@ pub enum ClientPacket {
         dir: String,
         name: String,
         file: Vec<u8>,
+    },
+    RemoveFile {
+        dir: String,
+        name: String,
     },
     PatchNotes {
         take: u32,
@@ -79,15 +90,10 @@ pub enum ClientPacket {
     AddPatchNote {
         data: String,
     },
-    CreateFolder {
-        dir: String,
-        name: String,
-    },
     Logs,
     SkipFileHashCheck {
         dir: String,
         name: String,
-        val: bool,
     },
 }
 
@@ -183,6 +189,9 @@ pub enum ServerPacket {
     FileUploaded {
         id: Uuid,
     },
+    FileProceeded {
+        id: Uuid,
+    },
 
     PatchNotes {
         take: u32,
@@ -238,6 +247,12 @@ pub enum LogLevel {
     Info,
     Warning,
     Error,
+}
+
+impl Default for LogHolder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LogHolder {

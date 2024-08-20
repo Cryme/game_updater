@@ -33,6 +33,7 @@ pub(crate) enum FileSortBy {
 
 #[derive(Default)]
 pub(crate) struct FileInfoHolder {
+    pub(crate) current_dir: String,
     folders: Vec<FolderInfo>,
     files: Vec<FileInfo>,
     pub(crate) sort_by: FileSortBy,
@@ -56,10 +57,12 @@ impl FileInfoHolder {
         self.folders.len()
     }
 
-    pub fn set(&mut self, files: Vec<FileInfo>, folders: Vec<FolderInfo>) {
+    pub fn set(&mut self, files: Vec<FileInfo>, folders: Vec<FolderInfo>, dir: String) {
         self.files = files;
         self.folders = folders;
         self.sort();
+
+        self.current_dir = dir;
     }
 
     pub(crate) fn sort(&mut self) {

@@ -7,6 +7,7 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 
 pub const DELETE_TOKEN: &str = "\u{f1f8}";
+pub const RESTORE_TOKEN: &str = "\u{f82a}";
 pub const EDIT_TOKEN: &str = "\u{f044}";
 pub const CLOSE_TOKEN: &str = "\u{f00d}";
 pub const INFO_TOKEN: &str = "\u{f05a}";
@@ -38,6 +39,7 @@ impl UiKit for Ui {
 
     fn clickable_label(&mut self, text: impl Into<WidgetText>) -> Response {
         self.add(Label::new(text).selectable(false).sense(Sense::click()))
+            .on_hover_cursor(CursorIcon::PointingHand)
     }
 
     ///Button with fixed **minimum** width and height

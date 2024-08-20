@@ -19,7 +19,7 @@ pub struct FileInfo {
     last_updated: chrono::DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerFolderInfo {
     pub size: u64,
     pub files_count: u32,
@@ -30,6 +30,21 @@ pub struct ServerFolderInfo {
     pub folders: HashMap<String, ServerFolderInfo>,
 }
 
+impl Default for ServerFolderInfo {
+    fn default() -> Self {
+        let t = Utc::now().timestamp();
+        Self {
+            size: 0,
+            files_count: 0,
+            created_at: t,
+            updated_at: t,
+            deleted: false,
+            files: Default::default(),
+            folders: Default::default(),
+        }
+    }
+}
+
 impl ServerFolderInfo {
     pub fn calc_size(&mut self) -> (u64, u32) {
         self.size = 0;
@@ -38,12 +53,14 @@ impl ServerFolderInfo {
         self.files.values().for_each(|v| {
             self.size += v.size;
             self.files_count += 1;
+            self.updated_at = self.updated_at.max(v.updated_at);
         });
 
         self.folders.values_mut().for_each(|v| {
             let (size, files_count) = v.calc_size();
             self.size += size;
             self.files_count += files_count;
+            self.updated_at = self.updated_at.max(v.updated_at);
         });
 
         (self.size, self.files_count)
@@ -70,7 +87,6 @@ pub fn hash_of(bytes_too_hash: &[u8]) -> String {
     format!("{:016x}", hasher.finish())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub fn compress_in_mem<W: Write>(bytes_to_compress: &[u8], buff: &mut W) -> anyhow::Result<()> {
     use flate2::write::ZlibEncoder;
     use flate2::Compression;
@@ -83,7 +99,6 @@ pub fn compress_in_mem<W: Write>(bytes_to_compress: &[u8], buff: &mut W) -> anyh
     Ok(())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub fn decompress_in_mem<W: Write>(bytes_to_decompress: &[u8], buff: &mut W) -> anyhow::Result<()> {
     use flate2::write::ZlibDecoder;
 

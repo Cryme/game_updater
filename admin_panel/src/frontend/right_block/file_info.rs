@@ -1,8 +1,7 @@
 use crate::backend::file_info_holder::{FileInfoHolder, FileSortBy, SortDir};
 use crate::backend::{FrontendEvent, Screen};
 use crate::frontend::dialog::Dialog;
-use crate::frontend::right_block::RightBlockScreen;
-use crate::frontend::ui_kit::{icon, DrawCb, UiKit, DELETE_TOKEN};
+use crate::frontend::ui_kit::{icon, DrawCb, UiKit, DELETE_TOKEN, RESTORE_TOKEN};
 use crate::frontend::Frontend;
 use bytesize::ByteSize;
 use eframe::epaint::Color32;
@@ -29,7 +28,6 @@ impl Frontend {
 
                     if ui
                         .clickable_label(RichText::new(v).underline().color(Color32::WHITE))
-                        .on_hover_cursor(CursorIcon::PointingHand)
                         .clicked()
                     {
                         self.to_backend
@@ -88,7 +86,7 @@ impl Frontend {
                                 let content = f.read().await;
                                 files.push((f.file_name(), content));
 
-                                log!(Level::Debug, "{}", f.file_name());
+                                log!(Level::Debug, "Uploading {}", f.file_name());
                             }
 
                             t.send(FrontendEvent::UploadFiles { dir, files }).unwrap();
@@ -98,6 +96,11 @@ impl Frontend {
             });
 
             ui.separator();
+
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut self.show_deleted_files, "Show deleted");
+            });
+
             ui.separator();
 
             self.backend.file_info_holder.draw_sort(ui);
@@ -107,14 +110,15 @@ impl Frontend {
             ScrollArea::vertical().show(ui, |ui| {
                 for f in self.backend.file_info_holder.folders() {
                     let f1 = || {
-                        self.emit_event(FrontendEvent::DeleteFile {
+                        self.emit_event(FrontendEvent::RemoveFolder {
                             dir: dir.to_string(),
-                            name: f.name.clone(),
+                            name: f.name.to_string(),
                         })
                     };
+
                     let f2 = || {
                         self.emit_event(FrontendEvent::RequestOpenScreen(Screen::Files {
-                            dir: dir.to_string() + "/" + &f.name,
+                            dir: format!("{dir}/{}", f.name),
                         }))
                     };
                     f.draw_cb(ui, (f1, f2));
@@ -123,11 +127,15 @@ impl Frontend {
                 }
 
                 for f in self.backend.file_info_holder.files() {
+                    if !self.show_deleted_files && f.deleted {
+                        continue
+                    }
+
                     f.draw_cb(
                         ui,
                         (
                             || {
-                                self.emit_event(FrontendEvent::DeleteFile {
+                                self.emit_event(FrontendEvent::RemoveFile {
                                     dir: dir.to_string(),
                                     name: f.name.clone(),
                                 })
@@ -136,7 +144,6 @@ impl Frontend {
                                 self.emit_event(FrontendEvent::SkipFileHashCheck {
                                     dir: dir.to_string(),
                                     name: f.name.clone(),
-                                    val: !f.skip_hash_check,
                                 })
                             },
                         ),
@@ -192,9 +199,25 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FileInfo {
             ui.set_height(ROW_HEIGHT);
 
             ui.scope(|ui| {
+                let (text, tooltip) = if self.name.len() > 25 {
+                    (&format!("{}...", &self.name[0..25]), true)
+                } else {
+                    (&self.name, false)
+                };
+
                 ui.set_width(FileSortBy::Name.width());
 
-                ui.label(RichText::new(&self.name).color(Color32::WHITE));
+                let mut l = ui.label(if self.deleted {
+                    RichText::new(text).color(Color32::GRAY).strikethrough()
+                } else {
+                    RichText::new(text).color(Color32::WHITE)
+                });
+
+                if tooltip {
+                    l = l.on_hover_ui(|ui| {
+                        ui.label(&self.name);
+                    });
+                }
             });
 
             ui.separator();
@@ -240,7 +263,7 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FileInfo {
                 ui.set_width(FileSortBy::CheckHash.width());
                 ui.set_height(ROW_HEIGHT);
 
-                let mut v = self.skip_hash_check;
+                let mut v = !self.skip_hash_check;
 
                 if ui.checkbox(&mut v, "").changed() {
                     callback.1();
@@ -250,8 +273,11 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FileInfo {
             ui.separator();
 
             if ui
-                .label(icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED))
-                .on_hover_cursor(CursorIcon::PointingHand)
+                .clickable_label(if self.deleted {
+                    icon(RESTORE_TOKEN).size(16.).color(Color32::DARK_GREEN)
+                } else {
+                    icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED)
+                })
                 .clicked()
             {
                 callback.0();
@@ -265,17 +291,32 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FolderInfo {
             ui.set_height(ROW_HEIGHT);
 
             ui.scope(|ui| {
+                let (text, tooltip) = if self.name.len() > 25 {
+                    (&format!("{}...", &self.name[0..25]), true)
+                } else {
+                    (&self.name, false)
+                };
+
                 ui.set_width(FileSortBy::Name.width());
 
-                if ui
-                    .clickable_label(
-                        RichText::new(&self.name)
-                            .color(Color32::LIGHT_BLUE)
-                            .underline(),
-                    )
-                    .on_hover_cursor(CursorIcon::PointingHand)
-                    .clicked()
-                {
+                let mut l = ui.clickable_label(if self.deleted {
+                    RichText::new(text)
+                        .color(Color32::GRAY)
+                        .strikethrough()
+                        .underline()
+                } else {
+                    RichText::new(&self.name)
+                        .color(Color32::LIGHT_BLUE)
+                        .underline()
+                });
+
+                if tooltip {
+                    l = l.on_hover_ui(|ui| {
+                        ui.label(&self.name);
+                    });
+                }
+
+                if l.clicked() {
                     callback.1()
                 }
             });
@@ -327,8 +368,11 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FolderInfo {
             ui.separator();
 
             if ui
-                .label(icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED))
-                .on_hover_cursor(CursorIcon::PointingHand)
+                .clickable_label(if self.deleted {
+                    icon(RESTORE_TOKEN).size(16.).color(Color32::DARK_GREEN)
+                } else {
+                    icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED)
+                })
                 .clicked()
             {
                 callback.0();
