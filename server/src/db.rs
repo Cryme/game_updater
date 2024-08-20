@@ -1,12 +1,11 @@
+use serde::{Deserialize, Serialize};
+use shared::admin_panel::PatchNote;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io::Write;
 use std::sync::OnceLock;
-use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use tracing::{error};
-use shared::admin_panel::PatchNote;
-
+use tracing::error;
 
 trait NextId {
     fn next_id(&self) -> Self;
@@ -14,17 +13,17 @@ trait NextId {
 
 impl NextId for u32 {
     fn next_id(&self) -> Self {
-        self+1
+        self + 1
     }
 }
 
 #[derive(Serialize, Deserialize, Default)]
-struct PatchNoteHolder<K: NextId+Eq+Hash+Clone, V> {
+struct PatchNoteHolder<K: NextId + Eq + Hash + Clone, V> {
     next_id: K,
-    items: HashMap<K, V>
+    items: HashMap<K, V>,
 }
 
-impl<K: NextId+Eq+Hash+Clone+Serialize, V:Serialize> PatchNoteHolder<K, V> {
+impl<K: NextId + Eq + Hash + Clone + Serialize, V: Serialize> PatchNoteHolder<K, V> {
     fn add(&mut self, item: V) {
         let mut id = self.next_id.next_id();
 
@@ -59,8 +58,7 @@ pub struct Database {
 
 impl Database {
     pub fn instance<'a>() -> &'a Database {
-        &INSTANCE
-            .get_or_init(|| Self::load(DATABASE_DIR))
+        INSTANCE.get_or_init(|| Self::load(DATABASE_DIR))
     }
 
     pub async fn info(&self) -> String {
@@ -79,7 +77,9 @@ impl Database {
 
         holder.add(patch_note.clone());
 
-        holder.dump(&format!("{}/patchnotes.ron", self.dir)).unwrap();
+        holder
+            .dump(&format!("{}/patchnotes.ron", self.dir))
+            .unwrap();
 
         patch_note
     }
@@ -91,7 +91,9 @@ impl Database {
             v.data = data;
         }
 
-        holder.dump(&format!("{}/patchnotes.ron", self.dir)).unwrap();
+        holder
+            .dump(&format!("{}/patchnotes.ron", self.dir))
+            .unwrap();
     }
 
     pub async fn patch_notes(&self) -> Vec<PatchNote> {
@@ -105,8 +107,8 @@ impl Database {
     }
 
     fn load(dir: &str) -> Self {
-        let patch_notes= if let Ok(file) = std::fs::File::open(format!("./{dir}/patchnotes.ron")) {
-             if let Ok(v) = ron::de::from_reader(file) {
+        let patch_notes = if let Ok(file) = std::fs::File::open(format!("./{dir}/patchnotes.ron")) {
+            if let Ok(v) = ron::de::from_reader(file) {
                 v
             } else {
                 error!("Corrupted database file: ./{dir}/patchnotes.ron");

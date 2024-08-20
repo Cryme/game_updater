@@ -125,18 +125,8 @@ async fn create_connection(
                         tx.send(packet).unwrap();
                     }
                 }
-                Err(e) => {}
+                Err(_) => {}
             }
         }
     });
-
-    //wait for either task to finish and kill the other task
-    // select! {
-    //     _ = (&mut send_task) => {
-    //         recv_task.abort();
-    //     },
-    //     _ = (&mut recv_task) => {
-    //         send_task.abort();
-    //     }
-    // }
 }

@@ -7,8 +7,8 @@ use crate::backend::Backend;
 
 use crate::frontend::setup_custom_fonts;
 pub use eframe::{WebLogger, WebOptions, WebRunner};
-use std::sync::mpsc::channel;
 use gloo_timers::future::TimeoutFuture;
+use std::sync::mpsc::channel;
 use wasm_bindgen_futures::spawn_local;
 
 const WS_SERVER: &str = "ws://127.0.0.1:3000/ws";
@@ -34,7 +34,7 @@ fn main() {
 
                     let ctx = cc.egui_ctx.clone();
 
-                    spawn_local(async move  {
+                    spawn_local(async move {
                         loop {
                             ctx.request_repaint();
 

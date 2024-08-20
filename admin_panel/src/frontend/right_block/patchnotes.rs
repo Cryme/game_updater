@@ -29,7 +29,9 @@ impl Frontend {
 
                                 ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
                                     if ui
-                                        .label(icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED))
+                                        .label(
+                                            icon(DELETE_TOKEN).size(16.).color(Color32::DARK_RED),
+                                        )
                                         .on_hover_cursor(CursorIcon::PointingHand)
                                         .clicked()
                                     {
@@ -68,7 +70,8 @@ impl Frontend {
                                             stroke: egui::Stroke::new(1.0, Color32::GRAY),
                                         }
                                         .show(ui, |ui| {
-                                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                                            ui.style_mut().wrap_mode =
+                                                Some(egui::TextWrapMode::Wrap);
                                             ui.horizontal(|ui| {
                                                 easy_mark(ui, &patch_note.data);
                                             })

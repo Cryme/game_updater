@@ -97,11 +97,8 @@ async fn process_message(
 
             match ClientPacket::from_bin(&data) {
                 Ok(packet) => {
-                    match packet {
-                        ClientPacket::FileList { .. } => {
-                            debug!(">>> {packet:?}");
-                        }
-                        _ => {}
+                    if let ClientPacket::FileList { .. } = packet {
+                        debug!(">>> {packet:?}");
                     }
 
                     spawn(async move { packet.handle(to_client).await });

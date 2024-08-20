@@ -5,6 +5,7 @@ mod log;
 mod statistics;
 
 use crate::admin_panel::admin_socket_handler;
+use crate::db::Database;
 use crate::file_updater::FileHolder;
 use axum::routing::get;
 use axum::Router;
@@ -14,7 +15,6 @@ use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::db::Database;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -41,7 +41,6 @@ async fn main() -> anyhow::Result<()> {
     info!("{}", FileHolder::instance().await.info());
 
     info!("listening on {}", listener.local_addr()?);
-
 
     axum::serve(
         listener,

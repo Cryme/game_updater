@@ -18,14 +18,15 @@ pub struct FileHolder {
 
 impl FileHolder {
     pub fn dump(&self) {
-        let mut file = match std::fs::File::create(format!("./database/{ROOT_FOLDER_INFO_FILE_NAME}")) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("Can't create file: {e}");
+        let mut file =
+            match std::fs::File::create(format!("./database/{ROOT_FOLDER_INFO_FILE_NAME}")) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Can't create file: {e}");
 
-                return;
-            }
-        };
+                    return;
+                }
+            };
 
         if let Err(e) = file.write_all(
             ron::ser::to_string_pretty(&self.root_folder, ron::ser::PrettyConfig::default())
@@ -37,19 +38,11 @@ impl FileHolder {
     }
 
     fn file_info(&self, folder_path: &str, file_name: &str) -> Option<&ServerFileInfo> {
-        let Some(folder) = self.folder_info(folder_path) else {
-            return None;
-        };
-
-        folder.files.get(file_name)
+        self.folder_info(folder_path)?.files.get(file_name)
     }
 
     fn file_info_mut(&mut self, folder_path: &str, file_name: &str) -> Option<&mut ServerFileInfo> {
-        let Some(folder) = self.folder_info_mut(folder_path) else {
-            return None;
-        };
-
-        folder.files.get_mut(file_name)
+        self.folder_info_mut(folder_path)?.files.get_mut(file_name)
     }
 
     /// returns (mut_ref_to_file_info, was_file_info_just_created)
@@ -90,11 +83,7 @@ impl FileHolder {
         }
 
         for f in path.split('/') {
-            let Some(p) = current_folder.folders.get_mut(f) else {
-                return None;
-            };
-
-            current_folder = p;
+            current_folder = current_folder.folders.get_mut(f)?;
         }
 
         Some(current_folder)
@@ -108,11 +97,7 @@ impl FileHolder {
         }
 
         for f in path.split('/') {
-            let Some(p) = current_folder.folders.get(f) else {
-                return None;
-            };
-
-            current_folder = p;
+            current_folder = current_folder.folders.get(f)?;
         }
 
         Some(current_folder)
@@ -133,24 +118,28 @@ impl FileHolder {
     }
 
     pub fn info(&self) -> String {
-        format!("File Holder:\n\tTotal files: {}\n", self.root_folder.files_count)
+        format!(
+            "File Holder:\n\tTotal files: {}\n",
+            self.root_folder.files_count
+        )
     }
 
     fn new() -> Self {
-        let root_folder =
-            if let Ok(file) = std::fs::File::open(format!("./database/{ROOT_FOLDER_INFO_FILE_NAME}")) {
-                if let Ok(d) = ron::de::from_reader::<std::fs::File, ServerFolderInfo>(file) {
-                    d
-                } else {
-                    error!("Corrupted root folder info: ./database/{ROOT_FOLDER_INFO_FILE_NAME}");
-
-                    ServerFolderInfo::default()
-                }
+        let root_folder = if let Ok(file) =
+            std::fs::File::open(format!("./database/{ROOT_FOLDER_INFO_FILE_NAME}"))
+        {
+            if let Ok(d) = ron::de::from_reader::<std::fs::File, ServerFolderInfo>(file) {
+                d
             } else {
-                info!("No root folder info was found!");
+                error!("Corrupted root folder info: ./database/{ROOT_FOLDER_INFO_FILE_NAME}");
 
                 ServerFolderInfo::default()
-            };
+            }
+        } else {
+            info!("No root folder info was found!");
+
+            ServerFolderInfo::default()
+        };
 
         Self { root_folder }
     }
@@ -178,7 +167,11 @@ impl<W: AsyncWrite + Unpin> AsyncOps for W {
 
 impl FileHolder {
     pub async fn create_folder(parent_folder_path: &str, new_folder_name: &str) -> bool {
-        let Ok(_) = std::fs::create_dir(Path::new(COMPRESSED_FOLDER_NAME).join(parent_folder_path).join(new_folder_name)) else {
+        let Ok(_) = std::fs::create_dir(
+            Path::new(COMPRESSED_FOLDER_NAME)
+                .join(parent_folder_path)
+                .join(new_folder_name),
+        ) else {
             return false;
         };
 

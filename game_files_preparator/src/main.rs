@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use shared::file::{
     compress_in_mem, hash_of, ServerFileInfo, ServerFolderInfo, COMPRESSED_FOLDER_NAME,
     ROOT_FOLDER_INFO_FILE_NAME,
@@ -53,32 +54,36 @@ fn main() {
             .trim_matches('/')
             .to_string();
 
-        if entry.depth() > current_depth {
-            let parent = entry.path().parent().unwrap();
+        match entry.depth().cmp(&current_depth) {
+            Ordering::Less => {
+                println!("Relocate required");
 
-            println!(
-                "deeper to {}",
-                parent.file_name().unwrap().to_str().unwrap()
-            );
+                current_folder = &mut root_folder;
 
-            current_folder = current_folder
-                .folders
-                .get_mut(parent.file_name().unwrap().to_str().unwrap())
-                .unwrap();
-            current_depth = entry.depth();
-        } else if entry.depth() < current_depth {
-            println!("Relocate required");
+                let chain: Vec<_> = rel_path.split('/').collect();
 
-            current_folder = &mut root_folder;
+                for folder_name in &chain[0..chain.len() - 1] {
+                    println!("relocating to {}", folder_name);
 
-            let chain: Vec<_> = rel_path.split('/').collect();
-
-            for folder_name in &chain[0..chain.len() - 1] {
-                println!("relocating to {}", folder_name);
-
-                current_folder = current_folder.folders.get_mut(*folder_name).unwrap();
+                    current_folder = current_folder.folders.get_mut(*folder_name).unwrap();
+                }
+                current_depth = entry.depth();
             }
-            current_depth = entry.depth();
+            Ordering::Equal => {}
+            Ordering::Greater => {
+                let parent = entry.path().parent().unwrap();
+
+                println!(
+                    "deeper to {}",
+                    parent.file_name().unwrap().to_str().unwrap()
+                );
+
+                current_folder = current_folder
+                    .folders
+                    .get_mut(parent.file_name().unwrap().to_str().unwrap())
+                    .unwrap();
+                current_depth = entry.depth();
+            }
         }
 
         if entry.path().is_dir() {

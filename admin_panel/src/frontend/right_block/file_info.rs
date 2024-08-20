@@ -128,7 +128,7 @@ impl Frontend {
 
                 for f in self.backend.file_info_holder.files() {
                     if !self.show_deleted_files && f.deleted {
-                        continue
+                        continue;
                     }
 
                     f.draw_cb(
@@ -214,7 +214,7 @@ impl<F1: FnOnce(), F2: FnOnce()> DrawCb<(F1, F2)> for FileInfo {
                 });
 
                 if tooltip {
-                    l = l.on_hover_ui(|ui| {
+                    l.on_hover_ui(|ui| {
                         ui.label(&self.name);
                     });
                 }

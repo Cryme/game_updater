@@ -7,7 +7,6 @@ use std::io::{BufReader, Cursor, Read};
 use strum::{Display, EnumIter};
 use uuid::Uuid;
 
-
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct PatchNote {
     pub id: u32,
@@ -99,10 +98,7 @@ pub enum ClientPacket {
 
 impl ClientPacket {
     pub fn is_heavy(&self) -> bool {
-        match self {
-            ClientPacket::AddFile { .. } => true,
-            _ => false,
-        }
+        matches!(self, ClientPacket::AddFile { .. })
     }
 
     pub fn from_bin(slice: &[u8]) -> anyhow::Result<ClientPacket> {

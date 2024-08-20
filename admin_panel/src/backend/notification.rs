@@ -22,9 +22,7 @@ impl PartialEq<Self> for Notification {
     fn eq(&self, other: &Self) -> bool {
         match self {
             Notification::FileUpload { id, .. } => {
-                let Notification::FileUpload { id: other_id, .. } = other else {
-                    return false;
-                };
+                let Notification::FileUpload { id: other_id, .. } = other;
 
                 id == other_id
             }

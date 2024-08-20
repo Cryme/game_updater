@@ -2,8 +2,6 @@ use crate::frontend::easy_mark::{easy_mark, MemoizedEasymarkHighlighter, DEFAULT
 use crate::frontend::ui_kit::{icon, UiKit, INFO_TOKEN};
 use egui::{text::CCursorRange, *};
 
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct EasyMarkEditor {
     pub code: String,
     pub edit_id: Option<u32>,
@@ -11,7 +9,6 @@ pub struct EasyMarkEditor {
     highlight_editor: bool,
     show_rendered: bool,
 
-    #[cfg_attr(feature = "serde", serde(skip))]
     highlighter: MemoizedEasymarkHighlighter,
 }
 

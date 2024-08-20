@@ -1,10 +1,10 @@
+use crate::db::Database;
 use crate::file_updater::FileHolder;
 use shared::admin_panel::{
     ClientPacket, FileInfo, FolderInfo, Log, LogLevel, PatchNote, ServerPacket,
 };
 use tokio::sync::mpsc::Sender;
 use tracing::log::debug;
-use crate::db::Database;
 
 pub(crate) trait HandleClientPacket {
     async fn handle(self, to_client: Sender<ServerPacket>);

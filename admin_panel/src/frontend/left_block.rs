@@ -29,10 +29,7 @@ impl Frontend {
             if ui
                 .left_menu_button(
                     "Patch notes",
-                    matches!(
-                        self.right_block_screen,
-                        RightBlockScreen::PatchNotes { .. }
-                    ),
+                    matches!(self.right_block_screen, RightBlockScreen::PatchNotes { .. }),
                     width,
                 )
                 .clicked()
